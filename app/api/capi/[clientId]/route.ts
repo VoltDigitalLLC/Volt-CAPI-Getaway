@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getCapiClient } from "@/lib/supabase";
-import { sendCapiEvent, hash, hashPhone, type CapiEvent } from "@/lib/capi";
+import { sendCapiEvent, hash, hashPhone, hashZip, type CapiEvent } from "@/lib/capi";
 
 // Node runtime required for the `crypto` hashing.
 export const runtime = "nodejs";
@@ -35,6 +35,16 @@ export async function POST(
     return Response.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
+  // GHL usually splits "Full Name" into first/last on the contact. If only a
+  // combined name arrives, split it ourselves so we can still send fn + ln.
+  let firstName = p.first_name;
+  let lastName = p.last_name;
+  if (!firstName && !lastName && p.full_name) {
+    const parts = String(p.full_name).trim().split(/\s+/);
+    firstName = parts.shift();
+    lastName = parts.join(" ") || undefined;
+  }
+
   const hasValue = p.value !== undefined && p.value !== null && p.value !== "";
 
   const event: CapiEvent = {
@@ -46,10 +56,11 @@ export async function POST(
     user_data: {
       em: hash(p.email),
       ph: hashPhone(p.phone),
-      fn: hash(p.first_name),
-      ln: hash(p.last_name),
+      fn: hash(firstName),
+      ln: hash(lastName),
       fbc: p.fbc || undefined,
       fbp: p.fbp || undefined,
+      zp: hashZip(p.zip || p.zip_code || p.postal_code),
       // IP + user agent must be the END USER's, captured on the landing page and
       // passed through — NOT the webhook sender's. Omit if not provided.
       client_ip_address: p.ip || undefined,

@@ -16,6 +16,14 @@ export function hashPhone(value?: string | null): string | undefined {
   return crypto.createHash("sha256").update(digits).digest("hex");
 }
 
+/** Zip/postal: lowercase, US → first 5 digits (drop +4), then SHA-256. */
+export function hashZip(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const z = value.trim().toLowerCase().split("-")[0].replace(/\s/g, "");
+  if (!z) return undefined;
+  return crypto.createHash("sha256").update(z).digest("hex");
+}
+
 export interface CapiUserData {
   em?: string;
   ph?: string;
@@ -23,6 +31,7 @@ export interface CapiUserData {
   ln?: string;
   fbc?: string;
   fbp?: string;
+  zp?: string;
   client_ip_address?: string;
   client_user_agent?: string;
 }
